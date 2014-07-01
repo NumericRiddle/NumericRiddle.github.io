@@ -1,0 +1,193 @@
+body {
+	background-color:darkgrey;
+}
+
+#divone {
+	position:relative;
+	top:0px;
+	left:500px;
+	width:300px;
+	height:75px;
+	background-color:lightblue;
+	-webkit-transition: all 600ms ease;
+	-moz-transition: all 600ms ease;
+	-ms-transition: all 600ms ease;
+	-o-transition: all 600ms ease;
+	transition: all 600ms ease;
+	-webkit-backface-visibility: hidden;
+}
+
+#divtwo {
+	position:relative;
+	top:0px;
+	left:500px;
+	width:300px;
+	height:75px;
+	background-color:White;
+	-webkit-transition: all 600ms ease;
+	-moz-transition: all 600ms ease;
+	-ms-transition: all 600ms ease;
+	-o-transition: all 600ms ease;
+	transition: all 600ms ease;
+	-webkit-transform-origin:top;
+	-webkit-backface-visibility: hidden;
+}
+
+#divthree {
+	position:relative;
+	top:0px;
+	left:500px;
+	width:300px;
+	height:75px;
+	background-color:White;
+	-webkit-transition: all 600ms ease;
+	-moz-transition: all 600ms ease;
+	-ms-transition: all 600ms ease;
+	-o-transition: all 600ms ease;
+	transition: all 600ms ease;
+	-webkit-transform-origin:bottom;
+	-webkit-backface-visibility: hidden;
+}
+
+#divfour {
+	position:relative;
+	top:0px;
+	left:500px;
+	width:300px;
+	height:75px;
+	background-color:White;
+	-webkit-transition: all 600ms ;
+	-moz-transition: all 600ms ;
+	-ms-transition: all 600ms ;
+	-o-transition: all 600ms ;
+	transition: all 600ms ;
+	-webkit-transform-origin:top;
+	-webkit-backface-visibility: hidden;
+}
+#divfive {
+	position:relative;
+	top:0px;
+	left:500px;
+	width:300px;
+	height:75px;
+	background-color:White;
+	-webkit-transition: all 600ms ;
+	-moz-transition: all 600ms ;
+	-ms-transition: all 600ms ;
+	-o-transition: all 600ms ;
+	transition: all 600ms ;
+	-webkit-transform-origin:bottom;
+	-webkit-backface-visibility: hidden;
+}
+
+#divone:hover ~ #divtwo {
+	-webkit-transform:perspective(500px) rotatex(45deg);
+    -moz-transform:perspective(500px) rotatex(45deg);
+    -ms-transform:perspective(500px) rotatex(45deg);
+    -o-transform:perspective(500px) rotatex(45deg);
+    transform:perspective(500px) rotatex(45deg);
+    opacity:1; 
+}
+#divone:hover ~ #divthree {
+	-webkit-transform:perspective(500px) rotatex(-45deg);
+    -moz-transform:perspective(500px) rotatex(-45deg);
+    -ms-transform:perspective(500px) rotatex(-45deg);
+    -o-transform:perspective(500px) rotatex(-45deg);
+    transform:perspective(500px) rotatex(-45deg);
+    opacity:0.5; 
+    top:-33.5px
+}
+#divone:hover ~ #divfour {
+	-webkit-transform:perspective(500px) rotatex(45deg);
+    -moz-transform:perspective(500px) rotatex(45deg);
+    -ms-transform:perspective(500px) rotatex(45deg);
+    -o-transform:perspective(500px) rotatex(45deg);
+    transform:perspective(500px) rotatex(45deg);
+    opacity:1; 
+    top:-33.5px
+}
+#divone:hover ~ #divfive {
+	-webkit-transform:perspective(500px) rotatex(-45deg);
+    -moz-transform:perspective(500px) rotatex(-45deg);
+    -ms-transform:perspective(500px) rotatex(-45deg);
+    -o-transform:perspective(500px) rotatex(-45deg);
+    transform:perspective(500px) rotatex(-45deg);
+    opacity:0.5; 
+    top:-67px
+}
+
+
+.button {
+	background:White;
+	position:absolute;
+	top:0px;
+	left:0px;
+	outline:none;
+	border:none;
+	width:50px;
+	height:50px;
+	border-bottom-right-radius:50px;
+	border-top-right-radius:50px;
+	overflow:hidden;
+	-webkit-transition: left 600ms ease;
+	-moz-transition: left 600ms ease;
+	-ms-transition: left 600ms ease;
+	-o-transition: left 600ms ease;
+	transition: left 600ms ease;
+	
+}
+#enclosure {
+	position:absolute;
+	top:0px;
+	left:0px;
+	width:100%;
+	height:100%;
+	-webkit-transition: left 600ms ease;
+	-moz-transition: left 600ms ease;
+	-ms-transition: left 600ms ease;
+	-o-transition: left 600ms ease;
+	transition: left 600ms ease;
+}
+.navigation {
+	position:absolute;
+	left:-250px;
+	top:0px;
+	width:250px;
+	height:100%;
+	background:white;
+	-webkit-transition: left 600ms ease;
+	-moz-transition: left 600ms ease;
+	-ms-transition: left 600ms ease;
+	-o-transition: left 600ms ease;
+	transition: left 600ms ease;
+}
+.button:hover {
+	background:lightgrey;
+}
+.button:active {
+	background:lightblue;
+	left:250px;
+}
+.threeicon {
+	background:grey;
+	height:5px;
+	width:30px;
+}
+#threeone {
+	position:relative;
+	top:-6px;
+}
+#threetwo {
+	position:relative;
+	top:0px;
+}
+#threethree {
+	position:relative;
+	top:6px;
+}
+.button:active ~ #nav {
+	left:0px;
+}
+.button:active ~ #enclosure {
+	left:250px;
+}
