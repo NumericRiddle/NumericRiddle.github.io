@@ -1053,16 +1053,29 @@ def main() -> None:
             "  python chat.py\n"
             "  python chat.py --config local.json\n"
             "  python chat.py --tools-dir ./my_tools\n"
+            "  python chat.py --host 192.168.1.10 --port 8080\n"
+            "  python chat.py --host localhost --port 11434   # Ollama\n"
             "\n"
-            "For local llama-server set base_url to e.g. http://localhost:8080/v1\n"
+            "Priority for base_url: --host/--port  >  LLM_BASE_URL env  >  config.json\n"
             "For OpenRouter set base_url to https://openrouter.ai/api/v1\n"
         ),
     )
     parser.add_argument("--config",    default="config.json", help="Path to config file")
     parser.add_argument("--tools-dir", default="tools",       help="Path to tools directory")
+    parser.add_argument("--host",      default=None,          help="llama-server host IP or hostname")
+    parser.add_argument("--port",      default=None, type=int, help="llama-server port (e.g. 8080)")
     args = parser.parse_args()
 
     config = Config(args.config)
+
+    # CLI host/port override — highest priority
+    if args.host or args.port:
+        host = args.host or "localhost"
+        port = args.port or 8080
+        config.data["base_url"] = f"http://{host}:{port}/v1"
+        # llama-server/Ollama don't require a real key
+        if not config.api_key or config.api_key == "YOUR_API_KEY_HERE":
+            config.data["api_key"] = "not-needed"
 
     if not Path(args.config).exists():
         config.save(args.config)
@@ -1074,6 +1087,7 @@ def main() -> None:
         print(f"No API key configured.")
         print(f"  Set 'api_key' in {args.config}")
         print(f"  or export OPENROUTER_API_KEY=sk-...")
+        print(f"  or use --host / --port for a local server (no key required)")
         return
 
     # Load tools
