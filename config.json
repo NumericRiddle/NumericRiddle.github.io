@@ -1,0 +1,12 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "api_key": "YOUR_API_KEY_HERE",
+  "model": "openai/gpt-4o-mini",
+  "max_tokens": 8192,
+  "compaction_threshold": 0.82,
+  "compaction_keep_recent": 4,
+  "max_agent_depth": 2,
+  "compaction_strategy": "smart",
+  "http_referer": "https://localhost",
+  "app_title": "LLM Chat"
+}
