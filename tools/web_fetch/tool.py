@@ -1,6 +1,6 @@
 """web_fetch — fetch a URL and return its content."""
 
-import httpx
+import requests
 
 TOOL_SCHEMA = {
     "name": "web_fetch",
@@ -38,10 +38,9 @@ def run(url: str, max_chars: int = 8000, timeout: float = 20) -> str:
             "Gecko/20100101 Firefox/120.0"
         )
     }
-    with httpx.Client(timeout=float(timeout), follow_redirects=True) as client:
-        resp = client.get(url, headers=headers)
-        resp.raise_for_status()
-        text = resp.text
+    resp = requests.get(url, headers=headers, timeout=float(timeout), allow_redirects=True)
+    resp.raise_for_status()
+    text = resp.text
     if len(text) > max_chars:
         text = text[:max_chars] + f"\n\n[… response truncated at {max_chars} characters]"
     return text
