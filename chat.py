@@ -231,6 +231,14 @@ class LLMClient:
 
         with self._lock:
             resp = self._client.post(self._url(), headers=self._headers, json=payload)
+
+        # Retry without tools if server doesn't support function calling (400)
+        if resp.status_code == 400 and tools:
+            payload.pop("tools", None)
+            payload.pop("tool_choice", None)
+            with self._lock:
+                resp = self._client.post(self._url(), headers=self._headers, json=payload)
+
         resp.raise_for_status()
         return resp.json()["choices"][0]["message"].get("content") or ""
 
@@ -247,7 +255,24 @@ class LLMClient:
         Stream a completion.
         Calls on_token(chunk) for every text chunk received.
         Returns the complete assistant message dict (may include 'tool_calls').
+        If the server returns 400 with tools present (no function-calling support),
+        automatically retries without tools.
         """
+        try:
+            return self._do_stream(messages, tools, on_token, on_tool_call)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 400 and tools:
+                # Server doesn't support tool calling — retry as plain chat
+                return self._do_stream(messages, None, on_token, None)
+            raise
+
+    def _do_stream(
+        self,
+        messages: list[dict],
+        tools: list[dict] | None,
+        on_token: Callable[[str], None] | None,
+        on_tool_call: Callable[[dict], None] | None,
+    ) -> dict:
         payload: dict = {
             "model": self.config.model,
             "messages": messages,
@@ -1053,16 +1078,33 @@ def main() -> None:
             "  python chat.py\n"
             "  python chat.py --config local.json\n"
             "  python chat.py --tools-dir ./my_tools\n"
+            "  python chat.py --host 192.168.1.10 --port 8080\n"
+            "  python chat.py --host localhost --port 11434   # Ollama\n"
             "\n"
-            "For local llama-server set base_url to e.g. http://localhost:8080/v1\n"
+            "Priority for base_url: --host/--port  >  LLM_BASE_URL env  >  config.json\n"
             "For OpenRouter set base_url to https://openrouter.ai/api/v1\n"
         ),
     )
     parser.add_argument("--config",    default="config.json", help="Path to config file")
     parser.add_argument("--tools-dir", default="tools",       help="Path to tools directory")
+    parser.add_argument("--host",      default=None,          help="llama-server host IP or hostname")
+    parser.add_argument("--port",      default=None, type=int, help="llama-server port (e.g. 8080)")
+    parser.add_argument("--model",     default=None,          help="Override model name from config")
+    parser.add_argument("--no-tools",  action="store_true",   help="Disable all tool use (plain chat mode)")
     args = parser.parse_args()
 
     config = Config(args.config)
+
+    # CLI overrides — highest priority
+    if args.host or args.port:
+        host = args.host or "localhost"
+        port = args.port or 8080
+        config.data["base_url"] = f"http://{host}:{port}/v1"
+        # llama-server/Ollama don't require a real key
+        if not config.api_key or config.api_key == "YOUR_API_KEY_HERE":
+            config.data["api_key"] = "not-needed"
+    if args.model:
+        config.data["model"] = args.model
 
     if not Path(args.config).exists():
         config.save(args.config)
@@ -1074,17 +1116,22 @@ def main() -> None:
         print(f"No API key configured.")
         print(f"  Set 'api_key' in {args.config}")
         print(f"  or export OPENROUTER_API_KEY=sk-...")
+        print(f"  or use --host / --port for a local server (no key required)")
         return
 
     # Load tools
-    print("Loading tools...")
-    tools, tool_errors = load_tools(args.tools_dir)
-    for err in tool_errors:
-        print(f"  ✗  {err}")
-    if tools:
-        print(f"  ✓  Loaded: {[t.name for t in tools]}")
+    if args.no_tools:
+        tools, tool_errors = [], []
+        print("Tools disabled (--no-tools).")
     else:
-        print("  (no tools loaded — continuing in plain chat mode)")
+        print("Loading tools...")
+        tools, tool_errors = load_tools(args.tools_dir)
+        for err in tool_errors:
+            print(f"  ✗  {err}")
+        if tools:
+            print(f"  ✓  Loaded: {[t.name for t in tools]}")
+        else:
+            print("  (no tools loaded — continuing in plain chat mode)")
 
     time.sleep(0.3)
 
