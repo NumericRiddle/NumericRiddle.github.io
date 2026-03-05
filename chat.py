@@ -34,9 +34,10 @@ from queue import Empty, Queue
 from typing import Callable, Optional
 
 try:
-    import httpx
+    import requests
+    from requests.exceptions import HTTPError, RequestException
 except ImportError:
-    print("Missing dependency: httpx\nRun:  pip install httpx")
+    print("Missing dependency: requests\nRun:  pip install requests")
     sys.exit(1)
 
 
@@ -194,8 +195,9 @@ class LLMClient:
 
     def __init__(self, config: Config) -> None:
         self.config = config
-        self._client = httpx.Client(timeout=180.0)
+        self._client = requests.Session()
         self._lock = threading.Lock()
+        self._timeout = 180
 
     @property
     def _headers(self) -> dict:
@@ -230,14 +232,18 @@ class LLMClient:
             payload["tool_choice"] = "auto"
 
         with self._lock:
-            resp = self._client.post(self._url(), headers=self._headers, json=payload)
+            resp = self._client.post(
+                self._url(), headers=self._headers, json=payload, timeout=self._timeout
+            )
 
         # Retry without tools if server doesn't support function calling (400)
         if resp.status_code == 400 and tools:
             payload.pop("tools", None)
             payload.pop("tool_choice", None)
             with self._lock:
-                resp = self._client.post(self._url(), headers=self._headers, json=payload)
+                resp = self._client.post(
+                    self._url(), headers=self._headers, json=payload, timeout=self._timeout
+                )
 
         resp.raise_for_status()
         return resp.json()["choices"][0]["message"].get("content") or ""
@@ -260,7 +266,7 @@ class LLMClient:
         """
         try:
             return self._do_stream(messages, tools, on_token, on_tool_call)
-        except httpx.HTTPStatusError as exc:
+        except HTTPError as exc:
             if exc.response.status_code == 400 and tools:
                 # Server doesn't support tool calling — retry as plain chat
                 return self._do_stream(messages, None, on_token, None)
@@ -287,43 +293,44 @@ class LLMClient:
         tc_acc: dict[int, dict] = {}  # index → accumulator
 
         with self._lock:
-            with self._client.stream(
-                "POST", self._url(), headers=self._headers, json=payload
-            ) as resp:
-                resp.raise_for_status()
-                for raw in resp.iter_lines():
-                    if not raw or not raw.startswith("data: "):
-                        continue
-                    data_str = raw[6:]
-                    if data_str.strip() == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(data_str)
-                    except json.JSONDecodeError:
-                        continue
+            resp = self._client.post(
+                self._url(), headers=self._headers, json=payload,
+                stream=True, timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            for raw in resp.iter_lines(decode_unicode=True):
+                if not raw or not raw.startswith("data: "):
+                    continue
+                data_str = raw[6:]
+                if data_str.strip() == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
 
-                    choice = chunk.get("choices", [{}])[0]
-                    delta = choice.get("delta", {})
+                choice = chunk.get("choices", [{}])[0]
+                delta = choice.get("delta", {})
 
-                    if delta.get("content"):
-                        full_content += delta["content"]
-                        if on_token:
-                            on_token(delta["content"])
+                if delta.get("content"):
+                    full_content += delta["content"]
+                    if on_token:
+                        on_token(delta["content"])
 
-                    for tc_delta in delta.get("tool_calls", []):
-                        idx = tc_delta.get("index", 0)
-                        if idx not in tc_acc:
-                            tc_acc[idx] = {
-                                "id": "",
-                                "type": "function",
-                                "function": {"name": "", "arguments": ""},
-                            }
-                        acc = tc_acc[idx]
-                        if tc_delta.get("id"):
-                            acc["id"] = tc_delta["id"]
-                        fn = tc_delta.get("function", {})
-                        acc["function"]["name"] += fn.get("name") or ""
-                        acc["function"]["arguments"] += fn.get("arguments") or ""
+                for tc_delta in delta.get("tool_calls", []):
+                    idx = tc_delta.get("index", 0)
+                    if idx not in tc_acc:
+                        tc_acc[idx] = {
+                            "id": "",
+                            "type": "function",
+                            "function": {"name": "", "arguments": ""},
+                        }
+                    acc = tc_acc[idx]
+                    if tc_delta.get("id"):
+                        acc["id"] = tc_delta["id"]
+                    fn = tc_delta.get("function", {})
+                    acc["function"]["name"] += fn.get("name") or ""
+                    acc["function"]["arguments"] += fn.get("arguments") or ""
 
         msg: dict = {"role": "assistant", "content": full_content or None}
         if tc_acc:
